@@ -4,6 +4,9 @@ import keras
 from keras.preprocessing.image import load_img, img_to_array
 from keras.applications.resnet import ResNet50
 from keras.layers import Flatten, Dense
+import os
+from PIL import Image, ImageOps
+import cv2
 
 W = 224
 H = 224
@@ -27,7 +30,7 @@ def load_model():
     model.add(Dense(128,activation='relu',kernel_initializer='he_uniform'))
     model.add(Dense(32,activation='relu',kernel_initializer='he_uniform'))
     model.add(Dense(4,activation='softmax'))
-    model.load_weights(r"resnet.h5")
+    model.load_weights(os.path.join(os.path.dirname(__file__),'resnet.h5'))
 
     return model
 
@@ -38,7 +41,11 @@ file = st.file_uploader("Please upload an mri image.", type=["jpg", "png"])
 
 
 def import_and_predict(image_data, model):
-    img_reshape = img_to_array(image_data)
+    size = (W, H)
+    image = ImageOps.fit(image_data, size, Image.ANTIALIAS)
+    image = np.asarray(image)
+    img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    img_reshape = img[np.newaxis, ...]
     prediction = model.predict(img_reshape)
     return prediction
 
@@ -46,7 +53,7 @@ def import_and_predict(image_data, model):
 if file is None:
     st.text("No image file has been uploaded.")
 else:
-    image = load_img(file, target_size=(W, H))
+    image = Image.open(file)
     predictions = import_and_predict(image, model)
     class_names = ["MildDemented", "ModerateDemented", "NonDemented", "VeryMildDemented"]
     string = "The patient is predicted to be: " + class_names[np.argmax(predictions)]
