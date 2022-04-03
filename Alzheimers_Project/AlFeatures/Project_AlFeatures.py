@@ -25,21 +25,8 @@ data=pd.read_csv(csv_file)
 data["SES"].fillna(data["SES"].mean(), inplace=True)
 data["MMSE"].fillna(data["MMSE"].mean(), inplace=True)
 data = data[data["Group"]!= "Converted"]
-label_to_class = {
-    'Nondemented': 0,
-    'Demented': 1
-}
-
-def scale(df):
-    dfs = df.copy()
-    for feature in df.columns:
-        if feature == 'Group' or feature == 'M/F':
-            continue
-        max_val = dfs[feature].max()
-        min_val = dfs[feature].min()
-        scaled = (dfs[feature] - min_val)/(max_val - min_val)
-        dfs[feature] = scaled
-    return dfs 
+data['Group'].replace(['Nondemented', 'Demented'],[0, 1], inplace=True)
+data['M/F'].replace(['M', 'F'],[0, 1], inplace=True)
 
 def createModel():
     model = keras.Sequential([
@@ -49,72 +36,53 @@ def createModel():
     keras.layers.Dense(8, activation='relu' ),
     keras.layers.Dense(2, activation='softmax')
     ])
+    h5_file = os.path.join(os.path.dirname(__file__), 'bi_fnn.h5')
+    model.load_weights(h5_file)
     return model
 
-header = st.container()
-dataset = st.container()
+st.header("Classification of Demented/NonDemented using Alzheimer feature dataset")
+st.subheader("Predicts the diagnosis of Alzheimer's disease based on the subjects personal data")
+st.write("This application uses Fully Connected Neural network")
+
 #features = st.beta_container()
-model_training = st.container()
+predictor = st.container()    
 
-with header:
-    st.title('Classification of Demented/NonDemented using Alzheimer feature dataset')
+with predictor:
+    sel = st.selectbox('Pick the gender of the subject', ['Male','Female'])
+    M_F = 0
+    if sel == 'Female':
+        M_F = 1
+    Age = st.slider('Age of the subject ', 60, 98,step = 1)
+    Age = (Age - data['Age'].min())/(data['Age'].max() - data['Age'].min()) # normalizing
 
-with dataset:
-    st.header('Alzheimer dataset overview')
-    st.text('The dataset was downloaded from Kaggle - Alzheimer features :')
-    st.write(data.head())
-    st.text('Features explanation:')
-    st.text('Group --> Class\nAge --> Age\nEDUC --> Years of Education\nSES --> Socioeconomic Status / 1-5\nMMSE --> Mini Mental State Examination\n\
-CDR --> Clinical Dementia Rating\neTIV --> Estimated total intracranial volume\nnWBV --> Normalize Whole Brain Volume\nASF --> Atlas Scaling Factor')
-    st.text('Value counts' )
-    st.write(data["Group"].value_counts())
-    fig = px.pie(data,names = "Group",title='Classification of Dataset')
-    st.write(fig)
-    data['Group'].replace(['Nondemented', 'Demented'],[0, 1], inplace=True)
-    data['M/F'].replace(['M', 'F'],[0, 1], inplace=True)
-    corr = data.corr()
-    st.text('Correlation table')
-    fig = plt.figure(figsize=(14,8))
-    sns.heatmap(corr, 
-        cmap="Blues", annot=True,
-        xticklabels=corr.columns,
-        yticklabels=corr.columns)
-    st.pyplot(fig)   
+    EDUC = st.slider('Years of Education of the subject ', 6, 23,step = 1)
+    EDUC = (EDUC - data['EDUC'].min())/(data['EDUC'].max() - data['EDUC'].min()) # normalizing
 
-with model_training:
-    st.header('Lets train and test dataset')
-    scaled_data = scale(data)
-    y = scaled_data['Group']
-    x = scaled_data.drop('Group',axis=1)
-    data = data.drop('Group',axis=1)
-    xTrain,xTest,yTrain,yTest = train_test_split(x,y,test_size=0.2,random_state=42)
-    st.text(f'Number of training data : {len(list(yTrain))}')
-    st.text(f'Number of testing data : {len(list(yTest))}')
-    yTrain = keras.utils.to_categorical(yTrain,2)
-    yTest = keras.utils.to_categorical(yTest,2)
-    sel_model = st.selectbox('Pick the AI model to train the data with', ['Fully connected neural network'])
-    if sel_model== 'Fully connected neural network':
-        model = createModel()
-        h5_file = os.path.join(os.path.dirname(__file__), 'bi_fnn.h5')
-        model.load_weights(h5_file)
+    SES = st.slider('Socioeconomic Status of the subject ', 1, 5,step = 1)
+    SES = (SES - data['SES'].min())/(data['SES'].max() - data['SES'].min()) # normalizing
+
+    MMSE = st.slider('Mini Mental State Examination of the subject ', 4, 30,step = 1)
+    MMSE = (MMSE - data['MMSE'].min())/(data['MMSE'].max() - data['MMSE'].min()) # normalizing
+   
+    CDR = st.slider('Clinical Dementia Rating of the subject ', 0, 3,step = 1)
+    CDR = (CDR - data['CDR'].min())/(data['CDR'].max() - data['CDR'].min()) # normalizing
+
+    eTIV = st.slider('Estimated total intracranial volume of the subject ', 1106, 2004)
+    eTIV = (eTIV - data['eTIV'].min())/(data['eTIV'].max() - data['eTIV'].min()) # normalizing   
+
+    nWBV = st.slider('Normalize Whole Brain Volume of the subject ', 0.644, 0.837)
+    nWBV = (nWBV - data['nWBV'].min())/(data['nWBV'].max() - data['nWBV'].min()) # normalizing
+
+    ASF = st.slider('Atlas Scaling Factor of the subject ', 0.876, 1.587)
+    ASF = (ASF - data['ASF'].min())/(data['ASF'].max() - data['ASF'].min()) # normalizing
+
+    xTest = np.array([M_F , Age , EDUC, SES, MMSE, CDR, eTIV, nWBV ,ASF])
+    #st.text(xTest)
+    xTest =np.expand_dims(xTest, axis=0)
+    #xTest = tf.convert_to_tensor(xTest)
+    model = createModel()
     y_pred=model.predict(xTest)
-    y_preds = np.argmax(y_pred, axis=1)
-    y_trues = np.argmax(yTest, axis=1)
-    st.text('Results for classification using'+ sel_model)
-    st.text("accuracy (testing): %.2f%%"% (accuracy_score(y_preds,y_trues)*100.0))
-    st.text("F1 Score (testing): %.2f%%"% (f1_score(y_preds,y_trues, average='weighted')*100.0))
-    #st.write(classification_report(y_preds,y_trues))
-    cm = confusion_matrix(y_trues, y_preds)
-    fig, ax = plt.subplots(figsize=(7, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar_kws={'shrink': .3}, linewidths=.1, ax=ax)
-    ax.set(
-    xticklabels=list(label_to_class.keys()),
-    yticklabels=list(label_to_class.keys()),
-    title='confusion matrix',
-    ylabel='True label',
-    xlabel='Predicted label'
-    )
-    params = dict(rotation=45, ha='center', rotation_mode='anchor')
-    plt.setp(ax.get_yticklabels(), **params)
-    plt.setp(ax.get_xticklabels(), **params)
-    st.pyplot(fig)
+    #st.text(y_pred)
+    class_names = ['Nondemented', 'Demented']
+    string = "The subject is predicted to be: " + class_names[np.argmax(y_pred)]
+    st.success(string)
