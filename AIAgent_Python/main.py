@@ -7,7 +7,7 @@ from langchain.output_parsers import PydanticOutputParser
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from tools import search_tool, wiki_tool, save_tool
 
-load_dotenv()
+load_dotenv() # Give open ai api key in .env file
 
 class ResearchResult(BaseModel):
     topic: str
@@ -15,7 +15,7 @@ class ResearchResult(BaseModel):
     sources: list[str]
     tools_used: list[str]
 
-llm = ChatOpenAI(model="gpt-4.1-nano-2025-04-14", temperature=0.0)
+llm = ChatOpenAI(model="gpt-4.1-nano-2025-04-14", temperature=0.0) 
 #llm = ChatAnthropic(model="claude-3-5-sonnet-20241022", temperature=0.0)
 #response = llm.invoke("What is the meaning of life?")
 #print(response)
