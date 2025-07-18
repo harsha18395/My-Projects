@@ -1,0 +1,1 @@
+This is interactive story generator built using FastAPI and React, also with AI integration
